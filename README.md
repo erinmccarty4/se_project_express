@@ -1,9 +1,15 @@
-# WTWR (What to Wear?): Back End
-The back-end project is focused on creating a server for the WTWR application. You’ll gain a deeper understanding of how to work with databases, set up security and testing, and deploy web applications on a remote machine. The eventual goal is to create a server with an API and user authorization.
-## Running the Project
-`npm run start` — to launch the server 
+What To Wear is a basic full stack application that allows users to login, create clothing cards, display cards, delete cards, view other individuals cards, update their profile information, and more!
 
-`npm run dev` — to launch the server with the hot reload feature
+This project was very developmental for me as it taught me tons of foundational full stack skills. These include things like frontend - backend communication and error handling (API creation), fetch request and proper API communcation methods, REST API's, routing, database model creation in MongoDB, controller creation for backend request handling, middleware applications in backend development (body parsing, centralized error handling, security headers, data validation packages), site security (XXS, DDos, XSRF), and more. I implemented responsive design as well. Particularly with regards to getting images of different sizes to scale correctly at different screen dimensions. Moreover, this project furthered my understanding of the use & creation of modal popups, form validation, user authentication, secure data storage, JSON Web tokens, and much more!
 
-### Testing
-Before committing your code, make sure you edit the file `sprint.txt` in the root folder. The file `sprint.txt` should contain the number of the sprint you're currently working on. For ex. 12
+Project technologies and techniques used:
+
+Responsive Design
+JS, HTML, CSS, React
+Mongdb, Node.js, Express.js
+Postman, Github Actions
+OpenWeatherAPI
+User Authentication
+
+Erin McCarty, Full Stack Developer
+September 2024
