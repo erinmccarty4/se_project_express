@@ -10,7 +10,7 @@
     "dev": "nodemon app.js"
   },
   "keywords": [],
-  "author": "Julie Chen",
+  "author": "Erin McCarty",
   "license": "ISC",
   "dependencies": {
     "bcryptjs": "^2.4.3",
