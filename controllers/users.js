@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs"); // importing bcrypt
 const jwt = require("jsonwebtoken");
 const { JWT_SECRET } = require("../utils/config");
-const { User } = require("../models/users");
+const  User  = require("../models/users");
 const {
   invalidData,
   documentNotFound,

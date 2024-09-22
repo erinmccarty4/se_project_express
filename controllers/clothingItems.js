@@ -1,4 +1,4 @@
-const { Item } = require("../models/clothingItem");
+const Item = require("../models/clothingItem");
 const {
   invalidData,
   documentNotFound,
