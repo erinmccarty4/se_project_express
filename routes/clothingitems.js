@@ -5,11 +5,12 @@ const {
   deleteItem,
   dislikeItem,
   likeItem,
-} = require("../controllers/clothingItems");
+} = require("../controllers/clothingitems");
+const { auth } = require("../middlewares/auth");
 
 itemRouter.get("/", getItems);
-itemRouter.post("/", createItem);
-itemRouter.delete("/:itemId", deleteItem);
-itemRouter.put("/:itemId/likes", likeItem);
-itemRouter.delete("/:itemId/likes", dislikeItem);
+itemRouter.post("/", auth, createItem);
+itemRouter.delete("/:itemId", auth, deleteItem);
+itemRouter.put("/:itemId/likes", auth, likeItem);
+itemRouter.delete("/:itemId/likes", auth, dislikeItem);
 module.exports = itemRouter;

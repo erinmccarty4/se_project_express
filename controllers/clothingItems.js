@@ -3,11 +3,13 @@ const {
   invalidData,
   documentNotFound,
   defaultError,
+  forbiddenError,
 } = require("../utils/errors");
+const { ForbiddenError } = require("../utils/errorclass/ForbiddenError");
 
 module.exports.getItems = (req, res) => {
   Item.find({})
-    .then((items) => res.status(200).send(items))
+    .then((items) => res.send(items))
     .catch((err) => {
       console.error(err);
       return res
@@ -31,11 +33,26 @@ module.exports.createItem = (req, res) => {
 };
 
 module.exports.deleteItem = (req, res) => {
-  Item.findByIdAndDelete(req.params.itemId)
-    .orFail()
-    .then((item) => res.status(200).send(item))
+  const user = req.user._id;
+  Item.findById(req.params.itemId)
+    .populate("owner")
+    .orFail() // ensures if no such _id in the db, it throws 404
+    .then((item) => {
+      if (item.owner._id.equals(user)) {
+        return Item.findByIdAndDelete(item._id)
+          .orFail()
+          .then((deleted) => res.send({ deleted }));
+      }
+
+      throw new ForbiddenError("Request forbidden");
+    })
     .catch((err) => {
-      console.error(err); // Log the error server-side
+      console.error(err);
+      if (err.name === "ForbiddenError") {
+        return res
+          .status(forbiddenError)
+          .send({ message: "Item cannot be deleted" });
+      }
       if (err.name === "CastError") {
         return res.status(invalidData).send({ message: "Invalid id format" });
       }
@@ -81,7 +98,7 @@ module.exports.dislikeItem = (req, res) => {
     { new: true }
   )
     .orFail()
-    .then((item) => res.status(200).send(item))
+    .then((item) => res.send(item))
     .catch((err) => {
       console.error(err);
       if (err.name === "CastError") {
