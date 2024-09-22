@@ -1,55 +1,108 @@
-const { User } = require("../models/users");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
 
+const User = require("../models/user");
 const {
-  invalidData,
-  documentNotFound,
-  defaultError,
+  BAD_REQUEST,
+  NOT_FOUND,
+  INTERNAL_SERVER_ERROR,
+  CONFLICT,
+  UNAUTHORIZED,
 } = require("../utils/errors");
+const { JWT_SECRET } = require("../utils/config");
 
-module.exports.getUsers = (req, res) => {
-  User.find({})
-    .then((users) => res.status(200).send(users))
+const updateUser = (req, res) => {
+  const userId = req.user._id;
+  const { name, avatar } = req.body;
+
+  User.findByIdAndUpdate(
+    userId,
+    { name, avatar },
+    { new: true, runValidators: true }
+  )
+    .then((updatedUser) => {
+      if (!updatedUser) {
+        return res.status(NOT_FOUND).send({ message: "User not found" });
+      }
+      return res.send(updatedUser);
+    })
     .catch((err) => {
-      console.log(err);
+      if (err.name === "ValidationError") {
+        return res.status(BAD_REQUEST).send({ message: "Invaild data" });
+      }
       return res
-        .status(defaultError)
+        .status(INTERNAL_SERVER_ERROR)
         .send({ message: "An error has occurred on the server" });
     });
 };
-module.exports.getUser = (req, res) => {
-  const { id } = req.params;
-  User.findById(id)
-    // throw error if id format valid but id not found
+
+const createUser = (req, res) => {
+  const { name, avatar, email, password } = req.body;
+  bcrypt
+    .hash(password, 10)
+    .then((hash) => User.create({ name, avatar, email, password: hash }))
+    .then(() => res.status(201).send({ name, avatar, email }))
+    .catch((err) => {
+      console.error(err);
+      if (err.code === 11000) {
+        return res
+          .status(CONFLICT)
+          .send({ message: "User with this email already exists" });
+      }
+      if (err.name === "ValidationError") {
+        return res.status(BAD_REQUEST).send({ message: "Invalid data" });
+      }
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: "An error has occurred on the server" });
+    });
+};
+
+const login = (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res
+      .status(BAD_REQUEST)
+      .send({ message: "Email and password are required" });
+  }
+
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign({ _id: user._id }, JWT_SECRET, {
+        expiresIn: "7d",
+      });
+      res.send({ token });
+    })
+    .catch((err) => {
+      if (err.message === "Incorrect email or password") {
+        return res
+          .status(UNAUTHORIZED)
+          .send({ message: "Incorrect email or password" });
+      }
+
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: "An error has occurred on the server" });
+    });
+};
+
+const getUser = (req, res) => {
+  const userId = req.user._id;
+  User.findById(userId)
     .orFail()
-    // return the found data to the user
     .then((user) => res.status(200).send(user))
     .catch((err) => {
-      console.error(err); // Log the error server-side
-      if (err.name === "CastError") {
-        return res.status(invalidData).send({ message: "Invalid id format" });
-      }
+      console.error(err);
       if (err.name === "DocumentNotFoundError") {
-        return res
-          .status(documentNotFound)
-          .send({ message: "Requested resource not found" });
+        return res.status(NOT_FOUND).send({ message: "Document not found" });
       }
-      return res.status(defaultError).send({
-        message: "An error has occurred on the server",
-      });
-    });
-};
-
-module.exports.createUser = (req, res) => {
-  const { name, avatar } = req.body; // get the name and description of the user
-  User.create({ name, avatar })
-    .then((user) => res.status(201).send({ data: user }))
-    .catch((err) => {
-      console.error(err); // Log the error server-side
-      if (err.name === "ValidationError") {
-        return res.status(invalidData).send({ message: "Invalid data" });
+      if (err.name === "CastError") {
+        return res.status(BAD_REQUEST).send({ message: "Invalid data" });
       }
       return res
-        .status(defaultError)
+        .status(INTERNAL_SERVER_ERROR)
         .send({ message: "An error has occurred on the server" });
     });
 };
+module.exports = { updateUser, createUser, getUser, login };
