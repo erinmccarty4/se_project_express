@@ -1,116 +1,135 @@
-const { Item } = require("../models/clothingItem");
+const ClothingItem = require("../models/clothingItem");
 const {
-  invalidData,
-  documentNotFound,
-  defaultError,
-  forbiddenError,
+  BAD_REQUEST,
+  NOT_FOUND,
+  INTERNAL_SERVER_ERROR,
+  FORBIDDEN,
 } = require("../utils/errors");
-const { ForbiddenError } = require("../utils/errorclass/ForbiddenError");
 
-module.exports.getItems = (req, res) => {
-  Item.find({})
+const createItem = (req, res) => {
+  const { name, weather, imageUrl } = req.body;
+
+  ClothingItem.create({ name, weather, imageUrl, owner: req.user._id })
+    .then((item) => {
+      res.send({ data: item });
+    })
+    .catch((error) => {
+      if (error.name === "ValidationError") {
+        res.status(BAD_REQUEST).send({ message: "Validation Error" });
+      } else {
+        res
+          .status(INTERNAL_SERVER_ERROR)
+          .send({ message: "An error has occurred on the server" });
+      }
+    });
+};
+
+const getItems = (req, res) => {
+  ClothingItem.find({})
     .then((items) => res.send(items))
     .catch((err) => {
       console.error(err);
       return res
-        .status(defaultError)
+        .status(INTERNAL_SERVER_ERROR)
         .send({ message: "An error has occurred on the server" });
     });
 };
 
-module.exports.createItem = (req, res) => {
-  const { name, weather, imageUrl } = req.body;
-  const owner = req.user._id;
-  Item.create({ name, weather, imageUrl, owner })
-    .then((item) => res.status(201).send(item))
-    .catch((err) => {
-      console.error(err); // Log the error server-side
-      if (err.name === "ValidationError") {
-        return res.status(invalidData).send({ message: "Invalid data" });
-      }
-      return res.status(defaultError).send({ message: "Internal Server" });
-    });
-};
+const deleteItem = (req, res) => {
+  const { itemId } = req.params;
+  const userId = req.user._id;
 
-module.exports.deleteItem = (req, res) => {
-  const user = req.user._id;
-  Item.findById(req.params.itemId)
-    .populate("owner")
-    .orFail() // ensures if no such _id in the db, it throws 404
+  ClothingItem.findById(itemId)
+    .orFail()
     .then((item) => {
-      if (item.owner._id.equals(user)) {
-        return Item.findByIdAndDelete(item._id)
-          .orFail()
-          .then((deleted) => res.send({ deleted }));
+      const ownerId = item.owner.toString();
+
+      if (userId !== ownerId) {
+        return res
+          .status(FORBIDDEN)
+          .send({ message: "You do not have permission to delete this item" });
       }
 
-      throw new ForbiddenError("Request forbidden");
+      return ClothingItem.findByIdAndDelete(itemId)
+        .then(() => res.send({ message: "Item successfully deleted" }))
+        .catch((err) => {
+          console.error(`Error ${err.name} with message ${err.message}`);
+
+          if (err.name === "CastError") {
+            return res.status(BAD_REQUEST).send({ message: "Invalid data" });
+          }
+
+          return res
+            .status(INTERNAL_SERVER_ERROR)
+            .send({ message: "An error has occurred on the server" });
+        });
     })
     .catch((err) => {
-      console.error(err);
-      if (err.name === "ForbiddenError") {
-        return res
-          .status(forbiddenError)
-          .send({ message: "Item cannot be deleted" });
+      console.error(`Error ${err.name} with message ${err.message}`);
+
+      if (err.name === "DocumentNotFoundError") {
+        return res.status(NOT_FOUND).send({ message: "Document not found" });
       }
       if (err.name === "CastError") {
-        return res.status(invalidData).send({ message: "Invalid id format" });
+        return res.status(BAD_REQUEST).send({ message: "Invalid data" });
       }
-      if (err.name === "DocumentNotFoundError") {
-        return res
-          .status(documentNotFound)
-          .send({ message: "Requested resource not found" });
-      }
-      return res.status(defaultError).send({
-        message: "An error has occurred on the server",
-      });
+
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: "An error has occurred on the server" });
     });
 };
 
-module.exports.likeItem = (req, res) => {
-  Item.findByIdAndUpdate(
+const likeItem = (req, res) => {
+  ClothingItem.findByIdAndUpdate(
     req.params.itemId,
-    { $addToSet: { likes: req.user._id } }, // add _id to the array if it's not there yet
+    { $addToSet: { likes: req.user._id } },
     { new: true }
   )
     .orFail()
-    .then((item) => res.status(201).send(item))
+    .then((item) => {
+      res.send({ data: item });
+    })
     .catch((err) => {
-      console.error(err);
-      if (err.name === "CastError") {
-        return res.status(invalidData).send({ message: "Invalid id format" });
-      }
+      console.error(`Error ${err.name} with message ${err.message}`);
+
       if (err.name === "DocumentNotFoundError") {
-        return res
-          .status(documentNotFound)
-          .send({ message: "Requested resource not found" });
+        return res.status(NOT_FOUND).send({ message: "Document not found" });
+      }
+      if (err.name === "CastError") {
+        return res.status(BAD_REQUEST).send({ message: "Invalid data" });
       }
 
-      return res.status(defaultError).send({
-        message: err.message,
-      });
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: "An error has occurred on the server" });
     });
 };
-module.exports.dislikeItem = (req, res) => {
-  Item.findByIdAndUpdate(
+
+const dislikeItem = (req, res) => {
+  ClothingItem.findByIdAndUpdate(
     req.params.itemId,
-    { $pull: { likes: req.user._id } }, // remove _id from the array
+    { $pull: { likes: req.user._id } },
     { new: true }
   )
     .orFail()
-    .then((item) => res.send(item))
+    .then((item) => {
+      res.send({ data: item });
+    })
     .catch((err) => {
-      console.error(err);
-      if (err.name === "CastError") {
-        return res.status(invalidData).send({ message: "Invalid id format" });
-      }
+      console.error(`Error ${err.name} with message ${err.message}`);
+
       if (err.name === "DocumentNotFoundError") {
-        return res
-          .status(documentNotFound)
-          .send({ message: "Requested resource not found" });
+        return res.status(NOT_FOUND).send({ message: "Document not found" });
       }
-      return res.status(defaultError).send({
-        message: "An error has occurred on the server",
-      });
+      if (err.name === "CastError") {
+        return res.status(BAD_REQUEST).send({ message: "Invalid data" });
+      }
+
+      return res
+        .status(INTERNAL_SERVER_ERROR)
+        .send({ message: "An error has occurred on the server" });
     });
 };
+
+module.exports = { createItem, getItems, deleteItem, likeItem, dislikeItem };

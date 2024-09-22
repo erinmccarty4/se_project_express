@@ -1,6 +1,15 @@
-module.exports.invalidData = 400;
-module.exports.documentNotFound = 404;
-module.exports.defaultError = 500;
-module.exports.duplicateData = 409;
-module.exports.unauthorizedError = 401;
-module.exports.forbiddenError = 403;
+const BAD_REQUEST = 400;
+const UNAUTHORIZED = 401;
+const NOT_FOUND = 404;
+const INTERNAL_SERVER_ERROR = 500;
+const FORBIDDEN = 403;
+const CONFLICT = 409;
+
+module.exports = {
+  BAD_REQUEST,
+  UNAUTHORIZED,
+  FORBIDDEN,
+  NOT_FOUND,
+  CONFLICT,
+  INTERNAL_SERVER_ERROR,
+};
